@@ -3,17 +3,13 @@
 import sys
 import json
 import struct 
-sys.path.insert(0,"/anaconda/lib/python2.7/site-packages")
-#sys.path.append("/anaconda/pkgs")
-#sys.path.append("/anaconda/lib/python2.7/site-packages/sklearn")
-#sys.path.append("/anaconda/pkgs/scikit-learn-0.19.0-np112py27_0/lib/python2.7/site-packages/sklearn")
+sys.path.insert(0,"/anaconda2/lib/python2.7/site-packages")
 import praw
 from collections import Counter
 import spacy
 #adapted from https://medium.com/@pmin91/aspect-based-opinion-mining-nlp-with-python-a53eb4752800
 nlp = spacy.load('en_core_web_md')
 #nlpCoref = spacy.load('en_coref_md');
-#sklearn
 #numpy/pandas
 from scipy import sparse
 import numpy as np
@@ -39,7 +35,6 @@ def sendMessage(encodedMessage):
     sys.stdout.write(encodedMessage['length'])
     sys.stdout.write(encodedMessage['content'])
     sys.stdout.flush()
-
 
 def extract_topics(post_id):
 
@@ -143,7 +138,6 @@ def extract_topics(post_id):
             }    
 
 while True:
-    receivedMessage = getMessage()
     try:
         from sklearn.naive_bayes import MultinomialNB
         from sklearn.cluster import AgglomerativeClustering
@@ -151,7 +145,8 @@ while True:
     except Exception as e:
         #squelch this
         pass
-        #sendMessage(encodeMessage(str(e)))
+        #sendMessage(encodeMessage(str(e)))      
+    receivedMessage = getMessage()
     try:
         output_data = extract_topics(receivedMessage["post_id"])
     except Exception as e:
