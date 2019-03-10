@@ -46,15 +46,15 @@ def extract_topics(post_id):
     CLIENT_ID = credentials["CLIENT_ID"]
     CLIENT_SECRET = credentials["CLIENT_SECRET"]
     USER_AGENT = credentials["USER_AGENT"]
-    NUM_TOP_LEVEL_COMMENTS = 200
-    MAX_DEPTH = 10
+    NUM_TOP_LEVEL_COMMENTS = 500
+    MAX_DEPTH = 15
 
     reddit = praw.Reddit(client_id=CLIENT_ID,
                          client_secret=CLIENT_SECRET,
                          user_agent=USER_AGENT)
     submission = reddit.submission(id=post_id) #'7zbrzm' - CNN guns '6baefh' - Berlin vis, '9mzk4o' - climate change
     submission.comment_sort = 'controversial'
-    submission.comments.replace_more(limit=MAX_DEPTH)
+    submission.comments.replace_more(limit=None)
 
     #sendMessage(encodeMessage("data loaded"))
 
@@ -62,11 +62,12 @@ def extract_topics(post_id):
     for x in submission.comments.list()]
 
     score_threshold = np.percentile(np.array([x["score"] if 'score' in x.keys() else 0 for x in flat_comments]), 75)
-    comments = [x for x in flat_comments\
+    '''comments = [x for x in flat_comments\
                          if (len(x["text"]) > 100\
                           or x["score"] >=score_threshold)\
                         and not (x["text"] == "[deleted]")\
-                        and len(x["text"]) > 50]
+                        and len(x["text"]) > 50]'''
+    comments = [x for x in flat_comments]
 
     MNBcleanedcomments = []
     HACmaxvectors = []
@@ -92,7 +93,7 @@ def extract_topics(post_id):
     HACmaxvectors = np.array(HACmaxvectors)
 
     #sendMessage(encodeMessage("start clustering"))
-    n_clusters = 5
+    n_clusters = 6
     n_terms_per_cluster=5
     clusters = AgglomerativeClustering(n_clusters = n_clusters, linkage='complete',\
                                                    affinity='l2' ).fit(HACmaxvectors)
@@ -106,12 +107,12 @@ def extract_topics(post_id):
     mean_length = sum([len(x["text"]) for x in comments])/len(comments)
     post_lengths = np.array([1.*len(x["text"])/mean_length for x in comments])[:,None]
     #adapted from http://www.machinelearningplus.com/nlp/topic-modeling-python-sklearn-examples/
-    MNBvectorizer = TfidfVectorizer(analyzer='word',
+    MNBvectorizer = CountVectorizer(analyzer='word',
                                     min_df=0.003,
-                                    max_df=0.1,
+                                    max_df=0.2,
                                     lowercase=True,
-                                    #stop_words=stopWords,
-                                    #token_pattern='[a-zA-Z0-9]{3,}',
+                                    stop_words="english",
+                                    token_pattern='[a-zA-Z0-9]{3,}',
                                     #ngram_range=(1,2)
                                    )
 
@@ -130,9 +131,15 @@ def extract_topics(post_id):
     for i, label in enumerate(["Topic "+str(x) for x in range(n_clusters)]):
         topTermLocs = np.argsort(clfMNB.coef_[i])[-n_terms_per_cluster:]
         topTerms = ", ".join(feature_names[topTermLocs])
-        cluster_terms.append ({"terms":topTerms, "num_posts":cluster_counter[i]})
+        cluster_terms.append ({
+            "topic_num":str(i),
+            "terms":topTerms,
+            "num_posts":cluster_counter[i]
+            })
 
-    posts = {x["id"]: fixed_clusters[i] for i,x in enumerate(comments)}
+    posts = [{"id": x["id"], "topic_num":fixed_clusters[i]}\
+    for i,x in enumerate(comments)]
+    
     return {'posts':posts,
             'topics': cluster_terms
             }    
@@ -141,7 +148,7 @@ while True:
     try:
         from sklearn.naive_bayes import MultinomialNB
         from sklearn.cluster import AgglomerativeClustering
-        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
     except Exception as e:
         #squelch this
         pass

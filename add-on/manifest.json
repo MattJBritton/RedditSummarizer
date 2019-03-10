@@ -22,7 +22,12 @@
     {
       "matches": ["https://*.reddit.com/*"],
       "run_at": "document_idle",
-      "js": ["lib/d3/d3.js", "content_scripts/page_controller.js"]
+      "js": [
+        "lib/d3/d3.min.js",
+        "lib/jquery-3.3.1.min.js",
+        "lib/jquery-popup-overlay-gh-pages/jquery.popupoverlay.js",
+        "content_scripts/page_controller.js"
+      ]
     }
   ],
   
