@@ -32,3 +32,7 @@ Add-ons currently must be loaded in developer mode, but signed versions are comi
 * Run `sh install/uninstall-chrome.sh` for Chrome, and `sh install/uninstall-firefox.sh` for Firefox.
 * For Firefox, navigate to the *about:debugging* page. Click *Delete* next to the extension. 
 * For Chrome, navigate to the *chrome://extensions/* page. Click *Remove* next to the extension. 
+
+## Made Using
+
+Built using [D3.js](https://d3js.org/), [jQuery](https://jquery.com/) and [jquery-popup-overlay](https://github.com/vast-engineering/jquery-popup-overlay) for the front-end. The back-end uses [Numpy](https://www.numpy.org/), [Scipy](https://www.scipy.org/), [Scikit-learn](https://scikit-learn.org/stable/), and [SpaCy](https://spacy.io/). Reddit data pulled using [Praw](https://praw.readthedocs.io/en/latest/index.html).
