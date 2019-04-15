@@ -22,8 +22,9 @@ Add-ons currently must be loaded in developer mode, but signed versions are comi
 * Run `sh install/install-chrome.sh` for Chrome, and `sh install/install-firefox.sh` for Firefox.
 * Install dependencies using `pip install -r install/requirements.txt`.
 * Now, load up your browser of choice.
-* For Firefox, navigate to the *about:debugging* page. Click *Load Temporary Add-on*, then select the *manifest.json* file. 
-* For Chrome, navigate to the *chrome://extensions/* page. Make sure *Developer mode* is selected. Click *Load Unpacked*, then select the *add-on* folder.
+* For Firefox, navigate to the [about:debugging](about:debugging) page. Click *Load Temporary Add-on*, then select the *manifest.json* file. 
+* For Chrome, navigate to the [chrome://extensions/](chrome://extensions/) page. Make sure *Developer mode* is selected. Click *Load Unpacked*, then select the *add-on* folder.
+* Note that for Firefox, you will need to re-load the add-on any time you close and re-open the browser.
 * You're ready to go! Navigate to any Reddit page to start.
 
 ## Uninstalling Topical for Reddit
