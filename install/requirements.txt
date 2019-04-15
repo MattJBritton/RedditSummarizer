@@ -1,0 +1,6 @@
+numpy >= 1.15.4
+praw >= 6.1.1
+scikit_learn >= 0.20.1
+scipy >= 1.1.0
+spacy >= 2.0.18
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-2.1.0/en_core_web_md-2.1.0.tar.gz#egg=en_core_web_md

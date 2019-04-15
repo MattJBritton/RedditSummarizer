@@ -7,8 +7,9 @@ sys.path.insert(0,"/anaconda2/lib/python2.7/site-packages")
 import praw
 from collections import Counter
 import spacy
-#adapted from https://medium.com/@pmin91/aspect-based-opinion-mining-nlp-with-python-a53eb4752800
-nlp = spacy.load('en_core_web_md')
+import en_core_web_md
+nlp = en_core_web_md.load()
+#nlp = spacy.load('en_core_web_md')
 #nlpCoref = spacy.load('en_coref_md');
 #numpy/pandas
 from scipy import sparse
