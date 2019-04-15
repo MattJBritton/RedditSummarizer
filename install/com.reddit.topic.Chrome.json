@@ -1,0 +1,8 @@
+{
+  "name": "com.reddit.topic",
+  "description": "Topic extraction python file",
+  "type": "stdio",
+  "allowed_origins": [
+  	"chrome-extension://blmibjdmmpgbcoabnhgjfnaikplangja/"
+  ]
+}

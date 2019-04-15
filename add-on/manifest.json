@@ -2,35 +2,33 @@
 
   "description": "Reddit plugin that presents a topic overview of a Reddit thread with the ability to jump to posts in each topic.",
   "manifest_version": 2,
-  "name": "Reddit FairFlare",
+  "name": "Topical for Reddit",
   "version": "1.0",
   "icons": {
-    "48": "icons/toolbar_icon.png"
+    "128": "icons/toolbar_icon.png"
+  },
+
+  "browser_action": {
+    "default_icon": "icons/toolbar_icon.png"
   },
 
   "background": {
     "scripts": ["background_controller.js"]
   },
 
+  "web_accessible_resources": [
+    "lib/d3.min.js",
+    "lib/jquery-3.3.1.min.js",
+    "lib/jquery.popupoverlay.js",
+    "page_controller.js"
+  ],
+
   "applications": {
     "gecko": {
-      "id": "redditFairFlare@example.org"
+      "id": "redditTopical@mattbritton.info"
     }
   },  
-
-  "content_scripts": [
-    {
-      "matches": ["https://*.reddit.com/*"],
-      "run_at": "document_idle",
-      "js": [
-        "lib/d3/d3.min.js",
-        "lib/jquery-3.3.1.min.js",
-        "lib/jquery-popup-overlay-gh-pages/jquery.popupoverlay.js",
-        "content_scripts/page_controller.js"
-      ]
-    }
-  ],
   
-  "permissions": ["activeTab","nativeMessaging"]
+  "permissions": ["activeTab","nativeMessaging", "<all_urls>", "tabs"]
 
 }

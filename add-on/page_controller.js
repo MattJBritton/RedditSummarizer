@@ -1,16 +1,17 @@
 (function() {
 
-	const TOPIC_SPACING = 60;
-	const NUM_TOPICS = 6; //model.topics.length;
-	const DIV_HEIGHT = TOPIC_SPACING * (NUM_TOPICS+1);
-	const DIV_WIDTH = 400;
-	const topic_margin = {top: 20, right: 20, bottom: 20, left: 20},
-	    topic_width = DIV_WIDTH - topic_margin.right - topic_margin.left,
-	    topic_height = DIV_HEIGHT - topic_margin.top - topic_margin.bottom;		
-
 	var model = {};
 
-	function initialize_from_data() {		
+	function initialize_from_data() {	
+
+		TOPIC_SPACING = 70;
+		NUM_TOPICS = model.topics.length;
+		DIV_HEIGHT = TOPIC_SPACING * (NUM_TOPICS+1);
+		DIV_WIDTH = 400;
+		topic_margin = {top: 20, right: 50, bottom: 20, left: 20},
+	    
+	    topic_width = DIV_WIDTH - topic_margin.right - topic_margin.left,
+	    topic_height = DIV_HEIGHT - topic_margin.top - topic_margin.bottom;				
 
 		topic_colors = d3.scaleOrdinal()
 							.domain(Object.values(model.topics)
@@ -19,8 +20,8 @@
 							.range(d3.schemePastel2);
 
 		topic_width_scale = d3.scaleLinear()
-							.domain([0, model.posts.length])
-							.range([0,topic_width])
+							.domain([0, d3.max(model.topics, d=> d.num_posts)])
+							.range([12,topic_width])
 
 		model.posts.forEach(function(d) {
 			d.viewed = false;
@@ -65,22 +66,30 @@
 
 	function mark_comments_by_topic() {			
 
-		d3.selectAll("div.Comment")
-			.style("background-color", function() {
-				return topic_colors(
-					model.posts.filter(
-						d=> d.id == get_id_from_comment(d3.select(this))
-					)[0].topic_num
-				);
-			}
-		);
+		//delay this slightly so that reddit can pull new comments first
+		setTimeout(function(){
+
+			d3.selectAll("div.Comment")
+				.style("background-color", function() {
+					try {
+						return topic_colors(
+							model.posts.filter(
+								d=> d.id == get_id_from_comment(d3.select(this))
+							)[0].topic_num
+						);
+					} catch(e) {
+						return "transparent";
+					}
+				}
+			);
+		}, 1000)
 	}
 
 	function update_next_post_with_topic(sel) {
-		console.log(sel);
+		//console.log(sel);
 		sel.each(function(d){
-			console.log(d.topic_num);
-			console.log($(get_next_post_with_topic(d.topic_num)));
+			//console.log(d.topic_num);
+			//console.log($(get_next_post_with_topic(d.topic_num)));
 		})
 		sel
 			.text(d=> {			
@@ -157,12 +166,24 @@
 			}
 		);  
 
+		/*
 		var topics_read_circles = topics.append("circle")
 			.attr("id", d=> "topic_read_circle_"+d.topic_num)
 			.attr("r", 5)
 			.attr("fill", "white")
 			.attr("cy", 20)
-			.attr("cx", 5)
+			.attr("cx", 0)
+			*/
+
+		var topics_read_circles = topics.append("rect")
+			.attr("id", d=> "topic_read_rect_"+d.topic_num)
+			.attr("fill", "white")
+			.attr('rx', 6)
+			.attr('ry', 6)
+			.attr("y", 15)
+			.attr("x", 5)	
+			.attr('height', 12)
+			.attr("width", 12)		
 
 		var topic_size_texts = topics.append("text")
 			.attr("x", function(d){
@@ -188,18 +209,21 @@
 
 		var next_posts = topics.append("text")
 			.attr("id", d=> "next_post_text_"+d.topic_num)
-			.attr("y", TOPIC_SPACING-25)
+			.attr("y", 35)
 			.attr("x", 5)
 			.attr("dy", ".35em")
 			.attr("text-anchor", "start")
 			.attr("text-decoration", "underline")
-			.style("pointer-events", "auto");
+			.style("fill", "#0000FF")
+			.style("pointer-events", "auto")
+			.style("cursor", "pointer");
 
 		update_next_post_with_topic(next_posts);		
 
 		//fire off the popup
 		$("#topic_pane").popup({
 			pagecontainer: "2x-container",
+			background: false,
 			autoopen: true,
 			vertical: "top",
 			horizontal: "right",
@@ -214,31 +238,35 @@
 
 		function comment_observed_callback(entries, observer) {
 
-			entries.forEach(function(entry){
+			try {
+				entries.forEach(function(entry){
 
-				comment_id = get_id_from_class(entry.target.className);
-				datum = model.posts.filter(d=> d.id == comment_id)[0];
+					comment_id = get_id_from_class(entry.target.className);
+					datum = model.posts.filter(d=> d.id == comment_id)[0];
 
-				if(!datum.viewed && entry.isIntersecting
-					&& entry.intersectionRatio >= 0.9) {
+					if(datum && !datum.viewed && entry.isIntersecting
+						&& entry.intersectionRatio >= 0.9) {
 
-					datum.viewed = true;
+						datum.viewed = true;
 
-					topic_viewed = model.topics.filter(
-						d=> d.topic_num == datum.topic_num
-					)[0];
+						topic_viewed = model.topics.filter(
+							d=> d.topic_num == datum.topic_num
+						)[0];
 
-					topic_viewed.num_viewed += 1;
+						topic_viewed.num_viewed += 1;
 
-					d3.select("#topic_read_circle_"+datum.topic_num)
-						.attr("cx", topic_width_scale(topic_viewed.num_viewed)
+						d3.select("#topic_read_rect_"+datum.topic_num)
+							.attr("width", topic_width_scale(topic_viewed.num_viewed)
+							);
+
+						update_next_post_with_topic(
+							d3.select("#next_post_text_"+topic_viewed.topic_num)
 						);
-
-					update_next_post_with_topic(
-						d3.select("#next_post_text_"+topic_viewed.topic_num)
-					);
-				}
-			});
+					}
+				});
+			} catch(e) {
+				console.log("error");
+			}
 		}
 
 		var observer_options = {"threshold": 1.0}
@@ -250,29 +278,41 @@
 
 		Object.values($("div.Comment")).forEach(function(comment) {
 
-			observer.observe(comment);
+			if(typeof comment === 'object' && comment !== null) {
+				observer.observe(comment);
+			}
 		});	
 	}
 
-	if (window.hasRun) {
-		return;
-	} else {
+	function build_onclicks() {
+		$('p:contains(" more repl")').on("click", mark_comments_by_topic);
+	}	
 
-		window.hasRun = true;		
+	function clear() {
 
-		chrome.runtime.sendMessage({message:"abc"});
+		//$("#topic_pane").popup("hide");
+		d3.select("#topic_pane_wrapper").remove();
+	}
 
-		chrome.runtime.onMessage.addListener(
-			function(request, sender, sendResponse) {
+	//chrome.runtime.sendMessage({message:"abc"});
+	console.log("page controller initialized");
 
-				console.log(request);
+	chrome.runtime.onMessage.addListener(
+		function(request, sender, sendResponse) {
+
+			console.log(request);
+			if(request["action"] == "leave") {
+
+				clear();
+			} else if(request["action"] == "build topics") {
 				model = request;
 				initialize_from_data();
 				mark_comments_by_topic();
 				build_topic_pane();
+				build_onclicks();
 				build_observers();
 			}
-		);	
-	};
+		}
+	);	
 
 }) ();
