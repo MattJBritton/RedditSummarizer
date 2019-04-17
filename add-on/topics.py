@@ -13,6 +13,7 @@ nlp = en_core_web_md.load()
 #nlpCoref = spacy.load('en_coref_md');
 #numpy/pandas
 from scipy import sparse
+from scipy.spatial.distance import cdist
 import numpy as np
 
 STOP_WORDS = ["reddit", "http", "https", "www", "com", "html"]
@@ -37,9 +38,14 @@ def encodeMessage(messageContent):
 def sendMessage(encodedMessage):
     sys.stdout.write(encodedMessage['length'])
     sys.stdout.write(encodedMessage['content'])
-    sys.stdout.flush()
+    sys.stdout.flush()    
 
 def extract_topics(post_id):
+
+    def vectorizeText(text, vectorizer):
+        vector_data = vectorizer.fit_transform(text)
+        return sparse.csr_matrix(vector_data/post_lengths).todense(),\
+            np.array(vectorizer.get_feature_names())
 
     #credentials
     CLIENT_ID = "r-9Wl_lxYBj5-Q"
@@ -58,13 +64,10 @@ def extract_topics(post_id):
     submission.comments.replace_more(limit=None)
 
     #BUILD DATA STRUCTURES/HELPER VARIABLES
-    flat_comments = [{"id":x.id, "text":x.body, "score":x.score}\
+    comments = [{"id":x.id, "text":x.body, "score":x.score,\
+        "num_comments":len(x.replies.list()), "parent_id":x.parent_id[3:]} #parent ids start with t1_\
     for x in submission.comments.list()\
-        if not x.stickied]
-
-    comments = [x for x in flat_comments\
-                            if len(x["text"]) > 50\
-                            and x["text"] != "[deleted]"]
+        if not x.stickied and len(x.body)>30 and x.body != "[deleted]"]
 
     mean_length = sum([len(x["text"]) for x in comments])/len(comments)
     post_lengths = np.array([1.*len(x["text"])/mean_length for x in comments])[:,None]                       
@@ -72,13 +75,11 @@ def extract_topics(post_id):
     MNBcleanedcomments = []
     OOVcleanedcomments = []
     vectors = []
+    vector_map = {}
     for comment in comments:
-
-        #comment['text_pronouns_resolved'] = nlpCoref(comment['text'])._.coref_resolved
-        #text = nlp(comment['text_pronouns_resolved'] if comment['text_pronouns_resolved'] != '' else comment['text'])
-        text=nlp(comment['text'])
-        vectors.append(text.vector)
-        #vectorizer needs a list of strings, one for each post
+        cleaned_text_list = [word for word in comment['text'].split(" ") if word not in nlp.Defaults.stop_words]
+        text=nlp(" ".join(cleaned_text_list) if len(cleaned_text_list) > 0 else comment["text"])
+        vector_map[comment["id"]] = text.vector  
         MNBcleanedcomments.append(" ".join([token.lemma_ for token in text\
                                                 if not token.is_punct and not token.is_stop\
                                                 and token.lemma_ != '-PRON-' \
@@ -86,53 +87,60 @@ def extract_topics(post_id):
                                                 and (token.pos_ in ['NOUN', 'ADJ', 'VERB', 'ADV']\
                                                     or token.ent_type != '')
                                             ])
-        );
+        )
         OOVcleanedcomments.append(" ".join([token.lemma_ for token in text\
                                                 if not token.is_punct\
                                                 and not token.is_stop\
-                                                and token.is_oov])
-        );
+                                                and token.is_oov]) 
+        )
 
-
-    def vectorizeText(text, vectorizer):
-        vector_data = vectorizer.fit_transform(text)
-        return sparse.csr_matrix(vector_data/post_lengths).todense(),\
-            np.array(vectorizer.get_feature_names())
+    for comment in comments:
+        if comment["parent_id"] in vector_map:
+            vector_plus_parent = (2.*vector_map[comment["id"]] + vector_map[comment["parent_id"]])/3.
+            vectors.append(vector_plus_parent)
+            vector_map[comment["id"]] = vector_plus_parent
+        else:
+            vectors.append(vector_map[comment["id"]])
 
     # Materialize the sparse data
-    oov_vectors, _ = vectorizeText(OOVcleanedcomments, CountVectorizer(analyzer='word',
-                                    min_df=0.03,
-                                    lowercase=True,
-                                    stop_words="english",
-                                    token_pattern='[a-zA-Z0-9]{3,}'
+    oov_vectors, oov_feature_names = vectorizeText(OOVcleanedcomments, 
+                                        TfidfVectorizer(analyzer='word',
+                                            min_df=0.005,
+                                            lowercase=True,
+                                            stop_words=STOP_WORDS,
+                                            token_pattern='[a-zA-Z]{3,}'
                                    )
     )
 
     vectors = np.concatenate((np.array(vectors), oov_vectors), axis=1)
+    distances = cdist(vectors, vectors, "euclidean")*-1.
+
+    sendMessage(encodeMessage(list(oov_feature_names)))
 
     #CLUSTERING
-    n_clusters = 6
-    n_terms_per_cluster=5
-    clusters = AgglomerativeClustering(n_clusters = n_clusters, linkage='ward',\
-                                                   affinity='euclidean' ).fit(vectors)
-    #clusters = DBSCAN(min_samples=15).fit(HACmaxvectors)
+    max_comments = max([c["num_comments"] for c in comments])
+    '''preferences = [p/(3. if (comments[i]["num_comments"]/max_comments) >= 0.7 else 1.)\
+        for i,p in enumerate(list(np.median(distances, axis=1)))]'''
+    preferences = np.median(distances, axis=1)
+    clusters = AffinityPropagation(affinity="precomputed", preference=preferences).fit(distances)
     clusters_by_size = Counter(clusters.labels_).most_common()
     cluster_rename_dict = {clusters_by_size[i][0]:i for i in range(len(clusters_by_size))}
     fixed_clusters = [cluster_rename_dict[x] for x in clusters.labels_]
     cluster_counter = Counter(fixed_clusters)
+    n_clusters = len(cluster_counter)
 
     mnb_vectors, feature_names = vectorizeText(MNBcleanedcomments, TfidfVectorizer(analyzer='word',
-                                    min_df=0.003,
+                                    min_df=0.005,
                                     max_df=0.2,
                                     lowercase=True,
                                     stop_words=STOP_WORDS,
-                                    token_pattern='[a-zA-Z0-9]{3,}',
-                                    #ngram_range=(1,2)
+                                    token_pattern='[a-zA-Z]{3,}'
                                    )
     )
 
     #MNB classifier to get important features per cluster
-    clfMNB = MultinomialNB()
+    n_terms_per_cluster=5
+    clfMNB = LogisticRegression()
     clfMNB.fit(mnb_vectors, fixed_clusters)
     cluster_terms = []
     for i, label in enumerate(["Topic "+str(x) for x in range(n_clusters)]):
@@ -153,9 +161,9 @@ def extract_topics(post_id):
 
 while True:
     try:
-        from sklearn.naive_bayes import MultinomialNB
-        from sklearn.cluster import AgglomerativeClustering, DBSCAN
-        from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.cluster import AffinityPropagation
+        from sklearn.feature_extraction.text import TfidfVectorizer
     except Exception as e:
         #squelch this
         pass 

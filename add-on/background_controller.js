@@ -36,8 +36,12 @@ function generate_topics(url, tab_id) {
 
 	port.onMessage.addListener((response) => {
 
-		response["action"] = "build topics";
-		chrome.tabs.sendMessage(tab_id, response);
+		if(response.hasOwnProperty("topics")) {
+			response["action"] = "build topics";
+			chrome.tabs.sendMessage(tab_id, response);
+		} else {
+			console.log(response);
+		}
 	});
 
  	port.onDisconnect.addListener((response) => {
